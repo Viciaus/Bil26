@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta content="21.8.6" name="app-version"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<meta content="#f5f5f7" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#000000" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="telephone=no" name="format-detection"/>
+<meta content="BIL" name="application-name"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<meta content="Bilancio" name="apple-mobile-web-app-title"/>
+<link href="apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
+<link href="favicon-32.png" rel="icon" sizes="32x32" type="image/png"/>
+<link href="icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="icon-512.png" rel="icon" sizes="512x512" type="image/png"/>
+<link href="manifest.webmanifest?v=21.8.6" rel="manifest"/>
+<title>Bilancio</title>
+<script src="https://unpkg.com/lucide@1.45.0/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js"></script>
+<link href="assets/app.css?v=21.8.6" rel="stylesheet"/>
+</head>
+<body>
+<div class="app" id="app">
+<header class="topbar">
+<div class="brand">
+<div class="brandmark"><i data-lucide="wallet-cards"></i></div>
+<div><h1>Bilancio</h1><div class="sync"><span class="dot" id="sync-dot"></span><span id="sync-text">Connessione…</span></div></div>
+</div>
+<button aria-label="Altro" class="round" onclick="openMore()"><i data-lucide="ellipsis"></i></button>
+</header>
+<div class="pwa-status-banner" hidden="" id="pwa-offline-banner">
+<i data-lucide="wifi-off"></i>
+<div><b>Sei offline</b><small>BIL resta aperta, ma per leggere o salvare nuovi dati serve la connessione.</small></div>
+</div>
+<div class="pwa-update-banner" hidden="" id="pwa-update-banner">
+<div><b>Nuova versione disponibile</b><small>Aggiorna BIL senza perdere i dati.</small></div>
+<button id="pwa-update-button" type="button" aria-label="Aggiorna BIL alla nuova versione" type="button">Aggiorna</button>
+</div>
+<div class="app-error-banner" hidden="" id="app-error-banner">
+<b>Diagnostica BIL</b>
+<span id="app-error-text"></span>
+</div>
+<main>
+<section class="view active" id="view-home">
+<div class="dash-header">
+<div><div class="v124-eyebrow">QUADRO GENERALE</div><h1 id="dash-greeting">Bentornata</h1><p>Patrimonio, mese e prossimi impegni.</p></div>
+<div class="dash-date" id="dash-date">—</div>
+</div>
+<section class="v12-wealth-hero">
+  <div class="v12-wealth-top"><div class="v169-wealth-copy"><span>Patrimonio disponibile</span><div class="v169-wealth-value-row"><b id="v12-net-worth" data-private-amount>—</b><button class="v169-privacy-eye" id="v152-privacy-eye" type="button" onclick="return toggleWealthPrivacy(event)" aria-label="Nascondi importi" aria-pressed="false"><i data-lucide="eye"></i></button></div><small id="v12-net-caption">Personale + quota condivisa</small></div><div class="v152-wealth-actions"><button onclick="openWealthDetail()" aria-label="Dettagli patrimonio"><i data-lucide="arrow-up-right"></i></button></div></div>
+  <div class="v12-wealth-split"><div><span>Personale</span><b id="v12-personal-worth" data-private-amount>—</b></div><div><span>Condiviso</span><b id="v12-shared-worth" data-private-amount>—</b></div></div>
+  <div class="v12-month-pulse">
+    <button onclick="go('movements')"><span>Entrate</span><b id="v12-income" data-private-amount>—</b></button>
+    <button onclick="go('movements')"><span>Uscite</span><b id="v12-expenses" data-private-amount>—</b></button>
+    <button onclick="go('profile')"><span>Risparmio</span><b id="v12-saving" data-private-amount>—</b></button>
+  </div>
+</section>
+<section class="v12-after-card"><div><span>Dopo gli impegni</span><b id="v12-after">—</b><small id="v12-after-note">Ricorrenti e scadenze ancora da sostenere</small></div><span class="v12-after-status" id="v12-after-status">—</span></section>
+<div class="v12-quick-actions"><button onclick="openAdd('spesa')"><i data-lucide="plus"></i><span>Spesa</span></button><button onclick="openInbox()"><i data-lucide="inbox"></i><span>Inbox</span></button><button onclick="openDeadlineSheet()"><i data-lucide="calendar-plus"></i><span>Scadenza</span></button><button onclick="go('auto')"><i data-lucide="car-front"></i><span>Auto</span></button></div>
+<section class="v179-home-focus" id="v179-home-focus" hidden></section>
+<section class="v124-section-head"><div><span>ANDAMENTO</span><h2>Ultimi 30 giorni</h2></div><button onclick="go('profile');setTimeout(()=>go('analytics'),120)">Analisi</button></section>
+<div class="dash-chart-card home30-v88">
+<div class="dash-chart-head">
+<div class="dash-chart-title"><i data-lucide="chart-no-axes-combined"></i>Spese</div>
+<span class="dash-badge blue">quota personale</span>
+</div>
+<div class="home30-kpis">
+<div><span>Totale</span><b id="home30-total">€ 0</b></div>
+<div><span>Media / giorno</span><b id="home30-average">€ 0</b></div>
+<div><span>vs 30 gg prima</span><b id="home30-delta">—</b></div>
+</div>
+<div class="dash-chart-body"><canvas id="home30Chart"></canvas></div>
+<div class="home30-note">Barre = spesa giornaliera · linea = media mobile 7 giorni.</div>
+</div>
+<div class="v178-home-insight" id="v178-home-insight" hidden></div>
+<div class="salary-reminder" id="salary-reminder">
+<div class="reminder-icon"><i data-lucide="bell-ring"></i></div>
+<div class="reminder-copy"><b>Hai ricevuto lo stipendio?</b><small>Dal 27 del mese ricordati di inserire l’importo ricevuto.</small></div>
+<button onclick="dismissSalaryReminder()">Più tardi</button>
+<button onclick="openSalaryFromReminder()">Inserisci</button>
+</div>
+<section class="v1612-noi-head v124-section-head"><div><span>INSIEME</span><h2>Noi</h2></div><button type="button" onclick="openNoiFromHome()">Vai a Noi <i data-lucide="chevron-right"></i></button></section>
+<button type="button" class="common-wealth-card v1612-noi-card" onclick="openNoiFromHome()" aria-label="Apri il quadro Noi">
+<div class="common-wealth-head">
+<div>
+<div class="common-wealth-eyebrow"><i data-lucide="users-round"></i> Patrimonio comune</div>
+<div class="common-wealth-value" id="home-net">€ 0</div>
+<div class="common-wealth-caption">Patrimonio realmente condiviso</div>
+</div>
+<div class="common-wealth-arrow"><i data-lucide="chevron-right"></i></div>
+</div>
+<div class="common-wealth-assets">
+<div class="common-wealth-asset">
+<span>Obiettivi comuni</span>
+<b id="home-common-goals">€ 0</b>
+</div>
+<div class="common-wealth-divider"></div>
+<div class="common-wealth-asset">
+<span>Conti comuni netti</span>
+<b id="home-common-accounts">€ 0</b>
+</div>
+</div>
+<div class="common-wealth-bottom">
+<div class="common-wealth-month">
+<span>Spese Noi · questo mese</span>
+<b id="home-common-expenses">€ 0</b>
+<small>flusso del mese · non incluso nel patrimonio</small>
+</div>
+<div class="common-wealth-spark">
+<canvas id="homeSpark"></canvas>
+</div>
+</div>
+<div class="common-wealth-footer">
+<span id="home-delta">Patrimonio della coppia</span>
+<span id="home-portfolios">0 obiettivi comuni</span>
+</div>
+</button>
+<div class="dash-grid">
+<button class="dash-card" onclick="go('movements')">
+<div><div class="dash-card-top"><div class="dash-icon green"><i data-lucide="chart-no-axes-combined"></i></div><span class="dash-badge green">Entrate</span></div>
+<div class="dash-card-label">Entrate del mese</div><div class="dash-card-value dash-positive" id="dash-income">€ 0</div></div>
+<div class="dash-card-sub" id="dash-income-sub">Totale stipendi ricevuti</div>
+</button>
+<button class="dash-card" onclick="go('movements')">
+<div><div class="dash-card-top"><div class="dash-icon red"><i data-lucide="chart-no-axes-column-decreasing"></i></div><span class="dash-badge red">Uscite</span></div>
+<div class="dash-card-label">Uscite (mese)</div><div class="dash-card-value dash-negative" id="dash-expenses">€ 0</div></div>
+<div class="dash-card-sub" id="dash-expenses-sub">ø € 0/giorno</div>
+</button>
+<button class="dash-card" onclick="go('analytics')">
+<div><div class="dash-card-top"><div class="dash-icon green"><i data-lucide="banknote"></i></div><span class="dash-badge green" id="dash-saving-badge">Positivo</span></div>
+<div class="dash-card-label">Risparmio reale</div><div class="dash-card-value" id="dash-saving">€ 0</div></div>
+<div class="dash-card-sub" id="dash-saving-sub">ETF + obiettivi + deposito</div>
+</button>
+<button class="dash-card" onclick="go('analytics')">
+<div><div class="dash-card-top"><div class="dash-icon orange"><i data-lucide="calendar-days"></i></div><span class="dash-badge orange">/giorno</span></div>
+<div class="dash-card-label">Media uscite giornaliere</div><div class="dash-card-value dash-orange" id="dash-expenses-daily">€ 0</div></div>
+<div class="dash-card-sub">Spesa giornaliera</div>
+</button>
+<button class="dash-card" onclick="go('movements')">
+<div><div class="dash-card-top"><div class="dash-icon blue"><i data-lucide="list-ordered"></i></div><span class="dash-badge blue">Qtà</span></div>
+<div class="dash-card-label">Transazioni (mese)</div><div class="dash-card-value dash-blue" id="dash-transactions">0</div></div>
+<div class="dash-card-sub">movimenti registrati</div>
+</button>
+<button class="dash-card" onclick="go('movements')">
+<div><div class="dash-card-top"><div class="dash-icon gray"><i data-lucide="chart-column-big"></i></div><span class="dash-badge" id="dash-today-date">Oggi</span></div>
+<div class="dash-card-label">Oggi</div><div class="dash-card-value" id="dash-today">€ 0</div></div>
+<div class="dash-card-sub" id="dash-today-sub">Nessun movimento oggi</div>
+</button>
+</div>
+<div class="fi-section" id="home-fi-section">
+  <div class="fi-head">
+    <div><div class="fi-eyebrow"><i data-lucide="sparkles"></i> BIL Intelligence</div><h2>Come sta andando il mese</h2></div>
+    <span class="fi-quality" id="fi-quality">Dati —</span>
+  </div>
+  <div class="fi-hero">
+    <div><span>Margine di riferimento</span><b id="fi-margin">—</b><small id="fi-margin-note">Calcolo sui dati registrati</small></div>
+    <div class="fi-status" id="fi-status"><i data-lucide="activity"></i><span>Analisi in corso</span></div>
+  </div>
+  <div class="fi-grid">
+    <div class="fi-metric"><span>Ritmo spesa</span><b id="fi-pace">—</b><small id="fi-pace-note">vs storico</small></div>
+    <div class="fi-metric"><span>Impegni attesi</span><b id="fi-commitments">€ 0</b><small id="fi-commitments-note">ricorrenti + scadenze</small></div>
+    <div class="fi-metric"><span>Categoria principale</span><b id="fi-top-category">—</b><small id="fi-top-category-note">nessun dato</small></div>
+  </div>
+  <div class="fi-insights" id="fi-insights"></div>
+  <div class="fi-foot">BIL distingue saldo, risparmio reale e margine di riferimento. Le stime sono basate solo sui dati registrati.</div>
+</div>
+<div class="v104-stack">
+  <section class="v104-card"><div class="v104-head"><div><span>10.5.1 · Ricorrenti</span><h2>Le tue spese ricorrenti</h2></div><button class="v105-link" onclick="openRecurringManager()">Gestisci</button></div><div id="v104-recurring"></div><div class="v105-summary" id="v104-recurring-summary">—</div></section>
+  <section class="v104-card"><div class="v104-head"><div><span>10.2 · Cash flow</span><h2>Prossimi movimenti del mese</h2></div><i data-lucide="calendar-days"></i></div><div id="v104-calendar"></div></section>
+  <section class="v104-card"><div class="v104-head"><div><span>10.3 · Financial Health</span><h2>Capacità di generare margine</h2></div><i data-lucide="heart-pulse"></i></div><div class="v104-health" id="v104-health"></div><p class="v104-note" id="v104-health-note"></p></section>
+  <section class="v104-card"><div class="v104-head"><div><span>10.4 · Smart Alerts</span><h2>Da tenere d’occhio</h2></div><i data-lucide="bell-ring"></i></div><div id="v104-alerts"></div><p class="v104-note">Gli alert usano soglie conservative e confronti con il tuo storico; non sono budget inventati.</p></section>
+</div>
+<section class="v106-forecast-card"><div class="v104-head"><div><span>10.6 · Smart Forecast</span><h2>Dopo gli impegni</h2></div><span class="v106-status" id="v106-forecast-status">—</span></div><div class="v106-forecast-grid"><div><span>Disponibile oggi</span><b id="v106-available">—</b></div><div><span>Impegni residui</span><b id="v106-commitments">€ 0</b></div><div><span>Dopo gli impegni</span><b id="v106-after">—</b></div></div><small class="v106-note" id="v106-forecast-note">Calcolo basato solo su entrate, spese, ricorrenti e scadenze registrate.</small></section>
+<section class="v105-garage-home" onclick="openGarage()" role="button" tabindex="0"><div class="v105-garage-icon"><i data-lucide="car-front"></i></div><div><span>Garage</span><h2>Auto e mobilità</h2><small id="v105-garage-summary">Aggiungi la tua auto e tieni insieme spese, scadenze e manutenzione.</small></div><i data-lucide="chevron-right"></i></section>
+<div class="dash-debt-wrap is-hidden" id="home-debt-section">
+<div class="dash-recent-head"><h2>Da sistemare</h2><button onclick="openDebtPanel()">Dettagli</button></div>
+<div id="home-debt-alerts"></div>
+</div>
+<div class="inbox-home is-hidden" id="home-inbox-section">
+<div class="dash-recent-head"><div><h2>Da verificare</h2><small id="home-inbox-subtitle">Movimenti in attesa</small></div><button onclick="openInbox()">Vedi tutti</button></div>
+<div class="inbox-home-card" id="home-inbox-list"></div>
+</div>
+<section class="v124-section-head v124-commit-head"><div><span>PROSSIMAMENTE</span><h2>Prossimi impegni</h2></div><button class="v1611-agenda-link" onclick="openAgendaPanel()" aria-label="Apri agenda"><span>Agenda</span><i data-lucide="chevron-right"></i></button></section>
+<div class="deadline-section v1611-upcoming">
+  <div class="v1611-upcoming-card">
+    <div class="v1611-upcoming-summary">
+      <div><span>DA OGGI</span><b id="v1611-upcoming-count">—</b></div>
+      <div class="v1611-upcoming-total"><span>PREVISTI</span><b id="v1611-upcoming-total">—</b></div>
+    </div>
+    <div class="deadline-mini-list" id="deadline-mini-list"></div>
+    <button class="v1611-add-commitment" onclick="openDeadlineSheet()"><i data-lucide="plus"></i><span>Aggiungi impegno</span></button>
+  </div>
+  <div class="v1611-calendar-engine" aria-hidden="true">
+    <div id="deadline-calendar-title"></div><div id="deadline-calendar-grid"></div>
+  </div>
+</div>
+</section>
+<section class="view" id="view-movements">
+<div class="page-header v164-movements-header"><div><div class="eyebrow">ATTIVITÀ</div><h1>Movimenti</h1><p>Tutto ciò che entra, esce o viene accantonato.</p></div><button class="round" aria-label="Nuovo movimento" onclick="openAdd('spesa')"><i data-lucide="plus"></i></button></div>
+<div class="v164-movement-summary" id="movement-summary"></div>
+<div class="v199-movement-quick" id="v199-movement-quick" aria-label="Aggiungi rapidamente"></div>
+<div class="search v164-movement-search"><i data-lucide="search"></i><input aria-label="Cerca" id="movement-search" oninput="renderMovements()" placeholder="Cerca movimento, categoria o persona"/></div>
+<div class="chips v164-movement-chips" id="movement-chips">
+<button class="chip active" data-filter="all" onclick="setMovementFilter(this)">Tutti</button>
+<button class="chip" data-filter="casa" onclick="setMovementFilter(this)">Casa</button>
+<button class="chip" data-filter="auto" onclick="setMovementFilter(this)">Auto</button>
+<button class="chip" data-filter="comuni" onclick="setMovementFilter(this)">Noi</button>
+<button class="chip" data-filter="personali" onclick="setMovementFilter(this)">Personali</button>
+<button class="chip" data-filter="entrate" onclick="setMovementFilter(this)">Entrate</button>
+<button class="chip" data-filter="versamenti" onclick="setMovementFilter(this)">Versamenti</button>
+</div>
+<div class="v1626-filter-total" id="movement-filter-total" hidden></div>
+<div class="v178-movement-insight" id="v178-movement-insight" hidden></div>
+<div id="movements-list"></div>
+</section>
+<section class="view" id="view-house">
+<div class="page-header v164-noi-page-head"><div><div class="eyebrow">NOI · CASA</div><h1>Casa</h1><p>Utenze, costi e andamento della casa condivisa.</p></div><button class="round" aria-label="Aggiungi spesa casa" onclick="openAdd('utenza')"><i data-lucide="plus"></i></button></div>
+<div class="v164-noi-switcher" data-noi-nav></div>
+<div class="house-spend-overview">
+<div class="house-spend-main">
+<span>Spese casa</span>
+<strong id="house-month-total">€ 0</strong>
+<small id="house-trend">—</small>
+</div>
+<div class="house-spend-average">
+<span id="house-average-label">Media anno in corso</span>
+<b id="house-average">€ 0</b>
+<small id="house-average-sub">media mensile</small>
+</div>
+</div>
+<div class="section-title"><h2>Questo mese</h2></div>
+<div class="card" id="house-categories"></div>
+<div class="section-title"><h2>Andamento mensile</h2></div>
+<div class="card"><div class="chartbox"><canvas id="houseChart"></canvas></div></div>
+<div class="section-title"><h2>Ripartizione annuale</h2><select class="year-picker" id="house-year-select" onchange="renderHouseYearPie();renderHouseTrend(this.value)"></select></div>
+<div class="card">
+<div class="house-donut-wrap">
+<canvas id="houseYearPie"></canvas>
+<div class="house-donut-center"><b id="house-year-total">€ 0</b><span>Totale casa</span></div>
+</div>
+<div id="house-year-legend"></div>
+</div>
+<div class="section-title"><h2>Storico mensile</h2></div>
+<div id="house-history"></div>
+<div class="house-intelligence-section">
+<div class="section-title"><h2>Casa Intelligence</h2><span class="v75-tag">previsione</span></div>
+<div class="house-intelligence-summary">
+<div class="card house-int-card">
+<div class="eyebrow">Previsione fine mese</div>
+<div class="house-int-value" id="house-forecast-total">€ 0</div>
+<div class="house-int-sub" id="house-forecast-sub">—</div>
+</div>
+<div class="card house-int-card accent">
+<div class="eyebrow">Budget consigliato</div>
+<div class="house-int-value" id="house-budget-recommended">€ 0</div>
+<div class="house-int-sub" id="house-budget-copy">stima prudente</div>
+</div>
+</div>
+<div class="card house-intelligence-compact">
+<div class="house-intelligence-line">
+<span>Ancora atteso</span><b id="house-expected-remaining">€ 0</b>
+</div>
+<div class="house-intelligence-line">
+<span>Costi fissi medi</span><b id="house-fixed-average">€ 0</b>
+</div>
+<div class="house-intelligence-line">
+<span>Costi variabili medi</span><b id="house-variable-average">€ 0</b>
+</div>
+</div>
+<div class="section-title intelligence-subtitle"><h2>Segnali utili</h2></div>
+<div class="card" id="house-intelligence-signals"></div>
+</div>
+<!-- retained as hidden compatibility targets: values are still calculated but no longer duplicate the visible Casa UI -->
+<span hidden="" id="house-real-average"></span>
+<span hidden="" id="house-real-average-sub"></span>
+<div hidden="" id="house-category-compare"></div>
+</section>
+<section class="view" id="view-goals"><div class="page-header v163-noi-header"><div><div class="eyebrow">SPAZIO CONDIVISO</div><h1>Noi</h1><p>Patrimonio, casa, auto e obiettivi della coppia.</p></div><button aria-label="Nuovo obiettivo" class="round" onclick="openGoalCreator()" type="button"><i data-lucide="plus"></i></button></div><div class="v164-noi-switcher" data-noi-nav></div><div class="top-level-content" id="goals-panel-content"></div></section><section class="view" id="view-objectives"><div class="page-header v163-noi-header"><div><div class="eyebrow">NOI · OBIETTIVI</div><h1>Obiettivi</h1><p>Traguardi, fondi e piani condivisi.</p></div><button aria-label="Nuovo obiettivo" class="round" onclick="openGoalCreator()" type="button"><i data-lucide="plus"></i></button></div><div class="v164-noi-switcher" data-noi-nav></div><div class="top-level-content" id="objectives-panel-content"></div></section><section class="view v12-auto-view" id="view-auto">
+<div class="v12-page-head v164-noi-page-head"><div><div class="eyebrow">NOI · AUTO</div><h1>Auto</h1><p>Costi, manutenzione e scadenze della macchina condivisa.</p></div><button class="round v158-auto-head-edit" onclick="editVehicle((garageVehicles||[])[0]?.id||'')" aria-label="Modifica auto"><i data-lucide="ellipsis"></i></button></div>
+<div class="v164-noi-switcher" data-noi-nav></div>
+<div id="v12-auto-page"></div>
+</section>
+<section class="view" id="view-analytics">
+<div class="analysis-v90-header">
+<div>
+<div class="eyebrow">PATRIMONIO · EVOLUZIONE</div>
+<h1>Analisi</h1>
+<p id="analysis-privacy-copy">Una lettura essenziale di patrimonio, andamento e capacità di accumulo.</p>
+</div>
+<button aria-label="Aggiorna analisi" class="round" onclick="renderAnalytics()"><i data-lucide="refresh-cw"></i></button>
+</div>
+<div class="segmented analysis-segments analysis-v90-tabs">
+<button class="active" onclick="setAnalysisSegment('overview',this)">Quadro</button>
+<button onclick="setAnalysisSegment('goals',this)">Obiettivi</button>
+<button onclick="setAnalysisSegment('ai',this)">Insight</button>
+</div>
+<div class="segment-pane active" id="analysis-overview">
+<div class="personal-wealth-hero v174-analysis-hero">
+<div>
+<span>Il mio patrimonio netto</span>
+<b id="analysis-personal-wealth">€ 0</b>
+<small id="analysis-personal-label">Profilo corrente</small>
+</div>
+<div class="privacy-pill"><i data-lucide="lock-keyhole"></i><span>solo il tuo profilo</span></div>
+</div>
+<div class="section-title"><h2>Composizione personale</h2></div>
+<div class="card analysis-composition v174-analysis-composition" id="analysis-personal-composition"></div>
+<div class="section-title"><h2>Andamento personale</h2><span class="v74-tag">snapshot reali</span></div>
+<div class="analysis-card wealth-history-card">
+<div class="wealth-history-head">
+<div><b id="analysis-history-title">Patrimonio personale</b><small id="analysis-history-quality">Verifico lo storico…</small></div>
+</div>
+<div class="chartbox-lg"><canvas id="wealthAnalysisChart"></canvas></div>
+</div>
+<div class="section-title"><h2>Capacità di accumulo</h2></div>
+<div class="wealth-capacity-grid">
+<div class="card metric"><div class="label">Risparmio reale medio</div><div class="value" id="analysis-personal-saving">€ 0</div><div class="sub">ultimi 6 mesi completi</div></div>
+<div class="card metric"><div class="label">Debiti rateali residui</div><div class="value" id="analysis-personal-debt">€ 0</div><div class="sub">solo del tuo profilo</div></div>
+</div>
+<div class="section-title"><h2>I miei traguardi patrimoniali</h2><span class="v74-tag">scenari matematici</span></div>
+<div class="wealth-plan-base personal-plan-base">
+<span>Base personale attuale</span><b id="wealth-plan-current">€ 0</b><small id="wealth-plan-saving">€ 0/mese registrati</small>
+</div>
+<div class="milestone-plan-list" id="milestone-plan-list"></div>
+<div class="section-title"><h2>Strumenti per orizzonte</h2></div>
+<div class="instrument-ladder">
+<div class="instrument-card low">
+<div class="instrument-icon"><i data-lucide="shield-check"></i></div>
+<div><b>Liquidità protetta / conto deposito</b><p>Per fondo di emergenza e obiettivi vicini. Utile quando la priorità è preservare disponibilità e stabilità.</p><small>Rischio molto basso · verificare garanzia, vincoli e condizioni</small></div>
+</div>
+<div class="instrument-card low">
+<div class="instrument-icon"><i data-lucide="landmark"></i></div>
+<div><b>BOT e titoli di Stato a breve</b><p>Per scadenze definite e per una parte prudente del patrimonio. Il prezzo può oscillare se venduti prima della scadenza.</p><small>Rischio basso ma non nullo · durata coerente con l’obiettivo</small></div>
+</div>
+<div class="instrument-card medium">
+<div class="instrument-icon"><i data-lucide="globe-2"></i></div>
+<div><b>ETF UCITS globali diversificati</b><p>Per orizzonti lunghi possono offrire ampia diversificazione, ma il capitale può diminuire anche sensibilmente nel breve periodo.</p><small>Rischio di mercato · non per denaro necessario a breve</small></div>
+</div>
+</div>
+<div class="analysis-safety-note">
+<i data-lucide="info"></i>
+<div><b>Nessun rendimento è garantito.</b><p>Le percentuali dei piani sono ipotesi tecniche. Costi, fiscalità, inflazione e oscillazioni dei mercati possono cambiare il risultato.</p></div>
+</div>
+</div>
+<div class="segment-pane" id="analysis-goals">
+<div class="couple-goals-hero">
+<div class="couple-goals-icon"><i data-lucide="heart-handshake"></i></div>
+<div><div class="eyebrow">Spazio condiviso</div><h2>Obiettivi di coppia</h2><p>Qui vengono analizzati solo i fondi e i traguardi condivisi. I patrimoni personali dell’altro utente restano esclusi.</p></div>
+</div>
+<div class="couple-goal-summary">
+<div><span>Accumulato negli obiettivi</span><b id="couple-goals-total">€ 0</b></div>
+<div><span>Versamenti medi</span><b id="couple-goals-monthly">€ 0/m</b></div>
+</div>
+<div class="section-title"><h2>Stato degli obiettivi</h2><span class="v74-tag">entrambi i partner</span></div>
+<div class="couple-goals-list" id="couple-goals-list"></div>
+<div class="section-title"><h2>Priorità di coppia</h2></div>
+<div class="ai-suggestion-stack" id="couple-goals-suggestions"></div>
+</div>
+<div class="segment-pane" id="analysis-ai">
+<div class="ai-v90-hero">
+<div class="ai-v90-icon"><i data-lucide="brain-circuit"></i></div>
+<div><div class="eyebrow">BIL AI locale</div><h2>Suggerimenti sul tuo patrimonio</h2><p>Le analisi personali usano esclusivamente i dati dell’utente che ha effettuato l’accesso; gli obiettivi di coppia sono trattati separatamente.</p></div>
+</div>
+<div class="section-title"><h2>Suggerimenti prioritari</h2></div>
+<div class="ai-suggestion-stack" id="wealth-ai-suggestions"></div>
+<div class="section-title"><h2>Check personale</h2></div>
+<div class="financial-health-grid" id="financial-health-grid"></div>
+<div class="section-title"><h2>Chiedi a BIL</h2><span class="v74-tag">risposta locale</span></div>
+<div class="bil-ask-card wealth-ai-ask">
+<div class="bil-ask-suggestions">
+<button onclick="askWealthAIPreset('Come posso arrivare prima a 100.000 euro?')">Verso 100k</button>
+<button onclick="askWealthAIPreset('Il mio fondo di emergenza è sufficiente?')">Fondo emergenza</button>
+<button onclick="askWealthAIPreset('Come stanno andando gli obiettivi di coppia?')">Obiettivi di coppia</button>
+</div>
+<form onsubmit="askWealthAI(event)">
+<textarea aria-label="Es. Con il mio ritmo attuale, quando potrei arrivare a 100.000 €?" id="wealth-ai-input" maxlength="500" placeholder="Es. Con il mio ritmo attuale, quando potrei arrivare a 100.000 €?" rows="3"></textarea>
+<button class="primary" type="submit"><i data-lucide="send"></i>Analizza</button>
+</form>
+<div class="bil-ask-answer is-hidden" id="wealth-ai-answer"></div>
+</div>
+<p class="quiet ai-v90-foot">BIL AI non conosce la tua tolleranza al rischio e non sostituisce una consulenza finanziaria personalizzata.</p>
+</div>
+</section>
+<section class="view" id="view-profile">
+<div class="page-header profile-page-header"><div><div class="eyebrow">Spazio privato</div><h1 id="profile-nav-title">Profilo</h1><p id="profile-nav-subtitle">Movimenti, patrimonio e debiti personali.</p></div></div>
+<div class="profile-head"><div class="profile-avatar" id="profile-avatar">M</div><h1 id="profile-name">Marina</h1><span class="shared-badge" id="profile-privacy-badge"><i data-lucide="shield-check"></i> Profilo privato</span><p id="profile-subtitle">Situazione personale</p></div>
+<button class="v12-analysis-entry" onclick="go('analytics')"><span class="v12-analysis-icon"><i data-lucide="chart-no-axes-combined"></i></span><span><b>Analisi finanziaria</b><small>Patrimonio, andamento e suggerimenti</small></span><i data-lucide="chevron-right"></i></button>
+<div class="segmented profile-segments">
+<button class="active" onclick="setProfileSegment('overview',this)" type="button">Panoramica</button>
+<button onclick="setProfileSegment('movements',this)" type="button">Movimenti</button>
+<button onclick="setProfileSegment('wealth',this)" type="button">Patrimonio</button>
+</div>
+<div class="segment-pane active" id="profile-overview">
+<div class="profile-overview-actions"><button onclick="profileQuickAdd('entrata')" type="button"><i data-lucide="plus-circle"></i>Entrata</button><button onclick="profileQuickAdd('spesa')" type="button"><i data-lucide="receipt-text"></i>Spesa</button><button onclick="profileQuickAdd('versamento')" type="button"><i data-lucide="piggy-bank"></i>Versamento</button></div>
+<div class="bank-sync-card" id="bank-sync-card">
+  <div class="bank-sync-icon"><i data-lucide="landmark"></i></div>
+  <div class="bank-sync-copy"><div class="eyebrow">Open Banking</div><h3>Revolut</h3><p id="bank-sync-status">Non collegato</p></div>
+  <div class="bank-sync-actions"><button id="bank-connect-btn" type="button" onclick="connectRevolut()">Collega</button><button id="bank-sync-btn" class="is-hidden" type="button" onclick="syncRevolut()">Sincronizza</button></div>
+</div>
+<div id="bank-sync-reconciliation" class="bank-sync-reconciliation" hidden></div>
+<div class="profile-wealth-hero">
+<div class="profile-wealth-top">
+<div><div class="eyebrow">Patrimonio personale</div><div class="profile-wealth-value" id="profile-assets-total">€ 0</div></div>
+<div class="profile-wealth-meta"><b id="profile-wealth-change">—</b><span>andamento disponibile</span></div>
+</div>
+<div class="profile-wealth-chart"><canvas id="profileWealthTrendChart"></canvas></div>
+<div class="privacy-note">Solo conti personali, investimenti e conti deposito. Gli obiettivi comuni restano nel patrimonio della coppia in Home.</div>
+</div>
+<div class="profile-month-pair">
+<div class="profile-month-card">
+<div class="profile-month-label">Entrate mese</div>
+<div class="profile-month-value" id="profile-income-total">€ 0</div>
+<div class="profile-month-sub">competenza mese corrente</div>
+</div>
+<div class="profile-month-card">
+<div class="profile-month-label">Spese mese</div>
+<div class="profile-month-value" id="profile-expense-total">€ 0</div>
+<div class="profile-month-sub">quota personale</div>
+</div>
+</div>
+<div class="profile-saving-grid">
+<div class="profile-saving-card actual">
+<span>Risparmio mese</span>
+<strong id="profile-net-save-card">€ 0</strong>
+<small id="profile-save-rate-card">ETF + obiettivi + conto deposito</small>
+<div class="profile-saving-breakdown" id="profile-saving-breakdown">—</div>
+</div>
+<div class="profile-saving-card possible">
+<span>Risparmio possibile</span>
+<strong id="profile-possible-save">€ 0</strong>
+<small id="profile-possible-save-sub">stima prudente del mese</small>
+<div class="profile-saving-breakdown" id="profile-possible-save-detail">—</div>
+</div>
+</div>
+<div class="section-title profile-debts-title">
+<h2>Debiti</h2>
+<button onclick="openInstallmentDebtCreator()" type="button"><i data-lucide="plus"></i>Aggiungi</button>
+</div>
+<div class="profile-debt-summary" id="profile-debt-summary"></div>
+<div class="profile-debt-list" id="profile-debt-list"></div>
+<section class="v1620-salary-card" aria-label="Media stipendio">
+<div class="v1620-salary-head">
+<div>
+<span class="v1620-salary-eyebrow">Media stipendio <span id="profile-salary-year"></span></span>
+<strong id="profile-avg-income">€ 0</strong>
+</div>
+<span class="v1620-salary-icon" aria-hidden="true"><i data-lucide="wallet-cards"></i></span>
+</div>
+<div class="v1620-salary-foot">
+<span id="profile-salary-months">—</span>
+<span class="v1620-salary-note">media sulle mensilità registrate</span>
+</div>
+</section>
+<div class="section-title"><h2>Bilancio ultimi 12 mesi</h2></div>
+<div class="analysis-card">
+<div class="flow-summary"><span>Entrate <b id="profile-flow-income-12">€ 0</b></span><span>Spese <b id="profile-flow-expense-12">€ 0</b></span><span>Risparmio <b id="profile-flow-saving-12">€ 0</b></span></div>
+<div class="chartbox-lg"><canvas id="profileFlowChart"></canvas></div>
+<div class="chart-note">Le colonne mostrano quanto hai realmente destinato al risparmio: acquisti ETF/PAC, versamenti agli obiettivi e versamenti sui conti deposito.</div>
+</div>
+<div class="section-title"><h2>Riepilogo mensile</h2></div>
+<div class="table-wrap"><table class="data-table"><thead><tr><th>Mese</th><th>Entrate</th><th>Spese</th><th>Risparmio reale</th><th>%</th></tr></thead><tbody id="profile-month-table"></tbody></table></div>
+</div>
+<div class="segment-pane" id="profile-movements">
+<div class="profile-actions">
+<button onclick="profileQuickAdd('entrata')" type="button"><i data-lucide="circle-plus"></i>Entrata</button>
+<button onclick="profileQuickAdd('spesa')" type="button"><i data-lucide="receipt-text"></i>Spesa</button>
+<button onclick="profileQuickAdd('versamento')" type="button"><i data-lucide="piggy-bank"></i>Versamento</button>
+</div>
+<div class="section-title"><h2>Entrate</h2></div>
+<div class="card list" id="profile-income-list"></div>
+<div class="section-title"><h2>Spese</h2><small>tocca un movimento per modificarlo</small></div><div class="card list v128-movement-list" id="profile-expense-list"></div>
+</div>
+<div class="segment-pane" id="profile-wealth">
+<div class="section-title section-tight v174-section-title"><h2>Composizione</h2><small>patrimonio personale</small></div>
+<div class="analysis-card v174-assets-chart"><div class="chartbox-sm"><canvas id="profileAssetsChart"></canvas></div></div>
+<div class="card list spaced-block" id="profile-assets-list"></div>
+<div class="section-title v174-invest-head"><div><small>Mercati</small><h2>PAC &amp; investimenti</h2></div><div class="inline-actions"><button onclick="refreshAutomaticETFPrices({force:true})">Aggiorna</button><button onclick="openInvestmentAdd()">Nuovo acquisto</button></div></div>
+<div class="quote-auto-bar">
+<div class="quote-auto-copy">
+<b id="profile-etf-auto-title"><span class="quote-source"><span class="live-dot"></span>Quotazione automatica</span></b>
+<small id="profile-etf-auto-status">Borsa Italiana · aggiornamento automatico</small>
+</div>
+<div class="quote-auto-actions"><button onclick="openInvestmentLive()">Manuale</button></div>
+</div>
+<div class="pac-hero">
+<div class="pac-head">
+<div>
+<b id="profile-pac-title">Portafoglio ETF</b>
+<small id="profile-pac-subtitle">Piano di accumulo</small>
+</div>
+<div class="pac-value">
+<strong id="profile-invest-current">€ 0</strong>
+<small id="profile-invest-pl-inline">—</small>
+</div>
+</div>
+<div class="pac-kpis">
+<div><span>Versato</span><b id="profile-invest-cost">€ 0</b></div>
+<div><span>Quote</span><b id="profile-invest-shares">0</b></div>
+<div><span>PMC</span><b id="profile-invest-pmc">€ 0</b></div>
+<div><span>Rendimento</span><b id="profile-invest-pl-pct">0%</b></div>
+</div>
+<div class="pac-chart"><canvas id="profileInvestmentTrendChart"></canvas></div>
+<div class="chart-explainer"><span class="bar"><i></i>Versamenti mensili</span><span class="line"><i></i>Capitale cumulato</span></div>
+<div class="chart-note">Le colonne mostrano quanto hai versato ogni mese; la linea mostra il capitale totale investito. Il valore di mercato e il rendimento sono separati sopra.</div>
+</div>
+<div class="is-hidden"><span id="profile-invest-pl">€ 0</span></div>
+<div class="card spaced-block" id="profile-investment-list"></div>
+<div class="section-title"><h2>Conti deposito</h2><button onclick="openDepositAdd()">Aggiungi</button></div><p class="quiet" style="margin:-4px 4px 9px">Gli aumenti del saldo vengono conteggiati nel Risparmio mese.</p>
+<div class="portfolio-summary">
+<div class="kpi"><div class="k-label">Totale</div><div class="k-value" id="profile-deposit-total">€ 0</div><div class="k-sub">capitale</div></div>
+<div class="kpi"><div class="k-label">Conti</div><div class="k-value" id="profile-deposit-count">0</div><div class="k-sub">registrati</div></div>
+<div class="kpi"><div class="k-label">Peso</div><div class="k-value" id="profile-deposit-share">0%</div><div class="k-sub">sul patrimonio</div></div>
+</div>
+<div class="card spaced-block" id="profile-deposit-list"></div>
+</div>
+<!-- kept for compatibility with older render code -->
+<div class="is-hidden"><span id="profile-save-rate-hidden"></span><canvas id="profileRateChart"></canvas><canvas id="profileInvestmentChart"></canvas><span id="profile-analysis-text"></span></div>
+</section></main>
+</div>
+<nav aria-label="Navigazione principale" class="dock v162-dock" id="dock">
+<button aria-label="Home" class="active" data-view="home" onclick="go('home',this)"><i data-lucide="house"></i><span>Home</span></button>
+<button aria-label="Movimenti" data-view="movements" onclick="go('movements',this)"><i data-lucide="list-restart"></i><span>Movimenti</span></button>
+<button aria-label="Aggiungi movimento" class="fab v162-fab" onclick="openAdd('spesa')"><i data-lucide="plus"></i><span>Aggiungi</span></button>
+<button aria-label="Noi" data-view="goals" onclick="go('goals',this)"><i data-lucide="users-round"></i><span>Noi</span></button>
+<button aria-label="Profilo" data-view="profile" id="dock-profile" onclick="go('profile',this)"><i data-lucide="circle-user-round" id="dock-profile-icon"></i><span id="dock-profile-label">Profilo</span></button>
+</nav>
+<button aria-label="Nuovo movimento" class="round floating-add" onclick="openAdd('spesa')"><i data-lucide="plus"></i></button>
+<div class="overlay" id="overlay" onclick="closeSheets()"></div>
+<div class="fullpanel" id="panel-inbox">
+<div class="panel-head"><button aria-label="Chiudi" onclick="closeInbox()"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">BIL Inbox</div><h2>Da verificare</h2></div><button class="text-btn" onclick="selectVisibleInbox()">Seleziona</button></div>
+<div class="panel-body">
+<div class="inbox-summary-card">
+<div><span>In attesa</span><b id="inbox-count">0</b></div>
+<div><span>Totale</span><b id="inbox-total">€ 0</b></div>
+</div>
+<div class="inbox-trust-note"><i data-lucide="shield-check"></i><span>Nessun movimento entra nel bilancio finché non lo confermi.</span></div>
+<div class="inbox-smart-tools">
+  <div class="inbox-filters" role="group" aria-label="Filtra Inbox">
+    <button class="active" data-inbox-filter="all" onclick="setInboxFilter('all')">Tutti</button>
+    <button data-inbox-filter="month" onclick="setInboxFilter('month')">Questo mese</button>
+    <button data-inbox-filter="revolut" onclick="setInboxFilter('revolut')">Revolut</button>
+  </div>
+  <div class="inbox-tools-row"><button onclick="selectVisibleInbox()">Seleziona visibili</button><button onclick="ignoreOldRevolutInbox()">Ignora storico Revolut</button></div>
+</div>
+<div class="inbox-bulk-bar is-hidden" id="inbox-bulk-bar"><b id="inbox-selected-count">0 selezionati</b><div><button onclick="ignoreSelectedInbox()">Ignora</button><button class="primary-mini" onclick="confirmSelectedInbox()">Conferma</button></div></div>
+<div id="inbox-full-list" class="inbox-list"></div>
+</div>
+</div>
+<div class="sheet" id="inbox-edit-sheet">
+<div class="handle"></div><h3>Verifica movimento</h3>
+<form class="form" onsubmit="saveInboxEdit(event)">
+<input id="inbox-edit-id" type="hidden"/>
+<div class="field"><label>Esercente / descrizione</label><input id="inbox-edit-merchant" required type="text"/></div>
+<div class="field"><label>Importo</label><input class="amount-input" id="inbox-edit-amount" inputmode="decimal" min="0.01" required step="0.01" type="number"/></div>
+<div class="field"><label>Categoria</label><select id="inbox-edit-category"></select></div>
+<div class="field"><label>Destinazione</label><select id="inbox-edit-destination" onchange="refreshInboxDestination()"><option value="personal">Personale</option><option value="shared">Noi</option><option value="house">Casa</option><option value="auto">Auto</option></select></div><div class="field" id="inbox-edit-vehicle-field" style="display:none"><label>Auto</label><select id="inbox-edit-vehicle"></select></div>
+<div class="field"><label>Data</label><input id="inbox-edit-date" required type="date"/></div>
+<div class="inbox-edit-source" id="inbox-edit-source"></div>
+<button class="primary" type="submit">Salva e conferma</button>
+<button class="secondary" type="button" onclick="saveInboxEditOnly()">Salva per dopo</button>
+</form>
+</div>
+<div class="sheet" id="add-sheet">
+<div class="handle"></div><div class="v165-add-head"><div><div class="eyebrow">REGISTRA</div><h3 id="v165-add-title">Nuova spesa</h3><p id="v165-add-subtitle">Importo, categoria e ripartizione in pochi passaggi.</p></div></div>
+<div class="sheet-tabs">
+<button data-add="spesa" onclick="switchAdd('spesa',this)">Spesa</button>
+<button data-add="entrata" onclick="switchAdd('entrata',this)">Entrata</button>
+<button data-add="versamento" onclick="switchAdd('versamento',this)">Versamento</button>
+<button data-add="utenza" onclick="switchAdd('utenza',this)">Casa</button>
+</div>
+<form class="form" id="add-form" onsubmit="submitAdd(event)">
+<div class="receipt-scan-card" id="receipt-scan-card">
+<div class="receipt-scan-top">
+<div class="receipt-scan-icon"><i data-lucide="scan-line"></i></div>
+<div class="receipt-scan-copy"><b>Scansiona scontrino</b><small>Fotografa o scegli una foto: provo a leggere importo, data ed esercente.</small></div>
+<button class="receipt-scan-btn" onclick="openReceiptScanner()" type="button">Scansiona</button>
+</div>
+<input accept="image/*" capture="environment" hidden="" id="receipt-file" onchange="scanReceiptFile(this)" type="file"/>
+<div class="receipt-scan-progress" id="receipt-scan-progress">
+<div class="receipt-progress-track"><div class="receipt-progress-fill" id="receipt-progress-fill"></div></div>
+<div class="receipt-scan-status" id="receipt-scan-status">Preparazione OCR…</div>
+</div>
+<div class="receipt-preview" id="receipt-preview">
+<img alt="Anteprima scontrino" id="receipt-preview-img"/>
+<div class="receipt-result"><b id="receipt-result-title">Scontrino letto</b><small id="receipt-result-text">Controlla sempre i dati prima di salvare.</small>
+<button class="receipt-to-inbox" id="receipt-to-inbox" type="button" onclick="sendScannedReceiptToInbox()">Metti in Da verificare</button></div>
+</div>
+<div class="receipt-scan-note">La foto viene analizzata nel browser e non viene salvata nel database. Dopo la scansione puoi sempre scegliere 50/50, 100% o una divisione personalizzata.</div>
+</div>
+<div class="field v166-amount-field"><label>Importo</label><input class="amount-input" id="add-amount" inputmode="decimal" min="0.01" placeholder="€ 0,00" required="" step="0.01" type="number"/></div>
+<div class="v166-scope" id="v166-scope"><button type="button" data-scope="shared" class="active" onclick="v166SetScope('shared')"><i data-lucide="users"></i>Noi</button><button type="button" data-scope="personal" onclick="v166SetScope('personal')"><i data-lucide="user"></i>Personale</button></div>
+<input id="add-scope" type="hidden" value="shared"/>
+<div class="field v181-category-field" id="field-cat"><label for="add-cat">Categoria</label><div class="v181-category-select"><select id="add-cat" aria-label="Categoria"></select><i data-lucide="chevron-down" aria-hidden="true"></i></div></div>
+<div class="field" id="field-desc"><label>Descrizione <span class="v166-optional">facoltativa</span></label><input aria-label="Es. Spesa supermercato" id="add-desc" placeholder="Es. Spesa supermercato"/></div>
+<div class="field is-hidden" id="field-dest"><label>Destinazione</label><select id="add-dest"></select></div>
+<div class="v166-detail-summary v167-direct-summary is-hidden" id="v166-detail-summary"><div><i data-lucide="equal"></i><span><b id="v166-detail-title">50 / 50 · da regolare</b><small id="v166-detail-sub">Pagata da — · oggi</small></span></div></div>
+<div id="v165-shared-options" class="v165-shared-options v167-direct-options v176-noi-details">
+  <div class="v176-noi-heading"><span>Dettagli Noi</span><small>Chi paga e come dividere</small></div>
+  <div class="v176-choice-row">
+    <label id="partner-label">Pagata da</label>
+    <div class="v176-native-control"><select id="add-partner" onchange="syncAddDebtor();v166UpdateSummary()"><option>Marina</option><option>Vincenzo</option></select></div>
+  </div>
+  <div class="v176-choice-row v176-choice-stack">
+    <label>Divisione</label>
+    <div class="v176-native-control"><select id="add-split-mode" onchange="toggleAddSplit();v166UpdateSummary()"><option value="50">50 / 50</option><option value="payer">100% a chi paga</option><option value="custom">Personalizzata</option></select></div>
+  </div>
+  <div class="is-hidden v176-custom-split" id="add-custom-split"><div class="grid2"><div class="field"><label>Marina %</label><input id="add-split-marina" max="100" min="0" type="number" value="50" oninput="v166UpdateSummary()"/></div><div class="field"><label>Vincenzo %</label><input id="add-split-vincenzo" max="100" min="0" type="number" value="50" oninput="v166UpdateSummary()"/></div></div></div>
+  <div class="v176-choice-row" id="field-settlement">
+    <label>Regolazione</label>
+    <div class="v176-native-control"><select id="add-settlement-status" onchange="v166UpdateSummary()"><option value="pending">Da regolare</option><option value="settled">Già regolata</option></select></div>
+  </div>
+  <div class="v176-choice-row v176-date-row">
+    <label>Data</label>
+    <div class="v176-native-control"><input id="add-date" required="" type="date" onchange="v166UpdateSummary()"/></div>
+  </div>
+</div>
+<button class="primary v166-save" type="submit">Salva</button>
+</form>
+</div>
+<div class="sheet" id="more-sheet">
+<div class="handle"></div><h3>Altro</h3>
+<div class="v168-more-list">
+<button onclick="openProfileSettings()"><span><i data-lucide="settings-2"></i><b>Impostazioni</b></span><i data-lucide="chevron-right"></i></button>
+<button class="v201-more-logout" onclick="logout()"><span><i data-lucide="log-out"></i><b>Esci dall'account</b></span><i data-lucide="chevron-right"></i></button>
+</div>
+</div>
+<div class="sheet" id="income-edit-sheet">
+<div class="handle"></div><h3>Modifica entrata</h3>
+<form class="form" onsubmit="saveIncomeEdit(event)">
+<input id="income-edit-id" type="hidden"/>
+<div class="field"><label>Importo</label><input class="amount-input" id="income-edit-amount" min="0.01" required="" step="0.01" type="number"/></div>
+<div class="field"><label>Data</label><input id="income-edit-date" required="" type="date"/></div>
+<div class="field"><label>Profilo</label><select id="income-edit-partner"><option>Marina</option><option>Vincenzo</option></select></div>
+<button class="primary" type="submit">Salva modifiche</button>
+<button class="secondary danger-btn" onclick="deleteIncomeEdit()" type="button">Elimina entrata</button>
+</form>
+</div>
+<div class="sheet" id="investment-edit-sheet">
+<div class="handle"></div><h3>Modifica investimento</h3>
+<form class="form" onsubmit="saveInvestmentEdit(event)">
+<input id="investment-edit-id" type="hidden"/>
+<div class="field"><label>ISIN</label><input id="investment-edit-isin" maxlength="16" required="" type="text"/></div>
+<div class="field"><label>Numero di quote</label><input id="investment-edit-shares" min="0.000001" required="" step="0.000001" type="number"/></div>
+<div class="field"><label>Prezzo di acquisto</label><input id="investment-edit-buy" min="0.000001" required="" step="0.000001" type="number"/></div>
+<div class="field"><label>Prezzo attuale manuale</label><input id="investment-edit-current" min="0" step="0.000001" type="number"/></div>
+<div class="field"><label>Data acquisto</label><input id="investment-edit-date" required="" type="date"/></div>
+<div class="field"><label>Profilo</label><select id="investment-edit-partner"><option>Marina</option><option>Vincenzo</option></select></div>
+<button class="primary" type="submit">Salva modifiche</button>
+<button class="secondary danger-btn" onclick="deleteInvestmentEdit()" type="button">Elimina acquisto</button>
+</form>
+</div>
+<div class="sheet" id="deposit-edit-sheet">
+<div class="handle"></div><h3 id="deposit-edit-title">Conto deposito</h3>
+<form class="form" onsubmit="saveDepositEdit(event)">
+<input id="deposit-edit-id" type="hidden"/>
+<div class="field"><label>Nome conto</label><input aria-label="Es. Deposito 12 mesi" id="deposit-edit-name" placeholder="Es. Deposito 12 mesi"/></div>
+<div class="field"><label>Banca</label><input aria-label="Nome banca" id="deposit-edit-bank" placeholder="Nome banca"/></div>
+<div class="field"><label>Importo</label><input class="amount-input" id="deposit-edit-amount" min="0" required="" step="0.01" type="number"/></div>
+<div class="field"><label>Tasso %</label><input id="deposit-edit-rate" min="0" step="0.01" type="number"/></div>
+<div class="field"><label>Data apertura</label><input id="deposit-edit-date" type="date"/></div>
+<div class="field"><label>Scadenza</label><input id="deposit-edit-maturity" type="date"/></div>
+<div class="field"><label>Profilo</label><select id="deposit-edit-partner"><option>Marina</option><option>Vincenzo</option></select></div>
+<button class="primary" type="submit">Salva</button>
+<button class="secondary danger-btn" id="deposit-delete-btn" onclick="deleteDepositEdit()" type="button">Elimina conto</button>
+</form>
+</div>
+<div class="sheet" id="contribution-edit-sheet">
+<div class="handle"></div><h3>Modifica versamento</h3>
+<form class="form" onsubmit="saveContributionEdit(event)">
+<input id="contribution-edit-src" type="hidden"/><input id="contribution-edit-id" type="hidden"/><input id="contribution-edit-pi" type="hidden"/>
+<div class="field"><label>Importo</label><input class="amount-input" id="contribution-edit-amount" min="0.01" required="" step="0.01" type="number"/></div>
+<div class="field"><label>Data</label><input id="contribution-edit-date" required="" type="date"/></div>
+<div class="field"><label>Profilo</label><select id="contribution-edit-partner"><option>Marina</option><option>Vincenzo</option></select></div>
+<button class="primary" type="submit">Salva modifiche</button>
+<button class="secondary danger-btn" onclick="deleteContributionEdit()" type="button">Elimina versamento</button>
+</form>
+</div>
+<div class="sheet" id="investment-live-sheet">
+<div class="handle"></div>
+<h3>Aggiorna valore investimento</h3>
+<form class="form" onsubmit="saveInvestmentLiveValue(event)">
+<div class="field"><label>Investimento</label><select id="investment-live-key" onchange="refreshInvestmentLiveSheet()"></select></div>
+<div class="field"><label>Quote possedute</label><input disabled="" id="investment-live-shares"/></div>
+<div class="field"><label>Valore attuale complessivo</label><input class="amount-input" id="investment-live-total" inputmode="decimal" min="0" placeholder="0,00" required="" step="0.01" type="number"/></div>
+<div class="field"><label>Data rilevazione</label><input id="investment-live-date" required="" type="date"/></div>
+<div class="hint">Inserisci il valore totale che vedi oggi nell'app del broker. BIL calcolerà automaticamente il prezzo per quota e aggiornerà P/L, rendimento e grafico.</div>
+<button class="primary" type="submit">Aggiorna valore</button>
+</form>
+</div>
+<div class="sheet" id="investment-add-sheet">
+<div class="handle"></div><h3>Nuovo acquisto</h3>
+<form class="form" id="investment-add-form" onsubmit="saveInvestmentPurchase(event)">
+<div class="field"><label>ISIN</label><input aria-label="es. IE00B4L5Y983" autocomplete="off" id="investment-isin" maxlength="16" placeholder="es. IE00B4L5Y983" required="" type="text"/></div>
+<div class="field"><label>Numero di quote</label><input id="investment-shares" min="0.000001" placeholder="0" required="" step="0.000001" type="number"/></div>
+<div class="field"><label>Prezzo di acquisto per quota</label><input id="investment-buy-price" min="0.000001" placeholder="0,00" required="" step="0.000001" type="number"/></div>
+<div class="field"><label>Data acquisto</label><input id="investment-date" required="" type="date"/></div>
+<div class="field"><label>Profilo</label><select id="investment-partner"><option>Marina</option><option>Vincenzo</option></select></div>
+<button class="primary" type="submit">Aggiungi acquisto</button>
+</form>
+</div>
+<div class="sheet" id="expense-edit-sheet">
+<div class="handle"></div><h3>Modifica spesa</h3>
+<form class="form" id="expense-edit-form" onsubmit="saveExpenseEdit(event)">
+<input id="edit-expense-src" type="hidden"/><input id="edit-expense-id" type="hidden"/>
+<div class="field"><label>Importo</label><input class="amount-input" id="edit-expense-amount" min="0.01" required="" step="0.01" type="number"/></div>
+<div class="expense-origin-line" id="edit-expense-origin" style="display:none"></div><div class="field" id="edit-expense-scope-field"><label>Ambito</label><div class="v167-edit-scope"><button type="button" data-edit-scope="shared" onclick="v167SetEditScope('shared')"><i data-lucide="users"></i>Noi</button><button type="button" data-edit-scope="personal" onclick="v167SetEditScope('personal')"><i data-lucide="user"></i>Personale</button></div><input id="edit-expense-scope" type="hidden" value="shared"/></div><div class="field"><label>Categoria / voce</label><select id="edit-expense-cat"></select></div>
+<div class="field"><label>Descrizione</label><input id="edit-expense-desc"/></div>
+<div class="field"><label>Pagata da</label><select id="edit-expense-payer"><option>Marina</option><option>Vincenzo</option></select></div>
+<div class="field"><label>Data</label><input id="edit-expense-date" type="date"/></div>
+<div class="field"><label>Divisione</label><select id="edit-split-mode" onchange="toggleEditSplit()"><option value="50">50 / 50</option><option value="payer">100% a chi paga</option><option value="custom">Personalizzata</option></select></div>
+<div class="is-hidden" id="edit-custom-split"><div class="grid2"><div class="field"><label>Marina €</label><input id="edit-split-marina" min="0" step="0.01" type="number"/></div><div class="field"><label>Vincenzo €</label><input id="edit-split-vincenzo" min="0" step="0.01" type="number"/></div></div></div>
+<div class="field"><label>Regolazione tra voi</label><select id="edit-settlement-status"><option value="pending">Da regolare</option><option value="settled">Già regolata</option></select></div>
+<button class="primary" type="submit">Salva modifiche</button>
+<button class="secondary danger-btn" onclick="deleteEditedExpense()" type="button">Elimina spesa</button>
+</form>
+</div>
+<div class="sheet" id="account-edit-sheet">
+<div class="handle"></div><h3 id="account-edit-title">Conto</h3>
+<form class="form" onsubmit="saveAccountEdit(event)">
+<input id="account-edit-id" type="hidden"/>
+<div class="field"><label>Nome</label><input aria-label="Es. Conto comune" id="account-edit-name" placeholder="Es. Conto comune" required=""/></div>
+<div class="field"><label>Tipo</label><select id="account-edit-type"><option value="checking">Conto corrente</option><option value="cash">Liquidità</option><option value="liability">Debito / passività</option></select></div>
+<div class="field"><label>Intestatario</label><select id="account-edit-owner"><option value="Comune">Comune</option><option>Marina</option><option>Vincenzo</option></select></div>
+<div class="field"><label>Saldo</label><input class="amount-input" id="account-edit-balance" required="" step="0.01" type="number"/></div>
+<button class="primary" type="submit">Salva</button>
+<button class="secondary danger-btn" id="account-delete-btn" onclick="deleteAccountEdit()" type="button">Elimina conto</button>
+</form>
+</div>
+<div class="sheet" id="goal-edit-sheet">
+<div class="handle"></div><h3>Modifica obiettivo</h3>
+<form class="form" onsubmit="saveGoalEdit(event)">
+<input id="goal-edit-key" type="hidden"/>
+<div class="field" id="goal-edit-name-field"><label>Nome</label><input id="goal-edit-name"/></div>
+<div class="field"><label>Target</label><input class="amount-input" id="goal-edit-target" min="0" required="" step="50" type="number"/></div>
+<div class="field"><label>Data di raggiungimento</label><input id="goal-edit-date" type="date"/></div>
+<div class="field"><label>Priorità</label><select id="goal-edit-priority"><option value="3">Alta</option><option value="2">Media</option><option value="1">Bassa</option></select></div>
+<button class="primary" type="submit">Salva modifiche</button>
+</form>
+</div>
+<div class="sheet" id="goal-create-sheet">
+<div class="handle"></div><h3>Nuovo obiettivo</h3>
+<form class="form" onsubmit="saveGoalCreate(event)">
+<div class="field"><label>Nome</label><input aria-label="Es. Auto" id="goal-create-name" placeholder="Es. Auto" required=""/></div>
+<div class="field"><label>Obiettivo</label><input class="amount-input" id="goal-create-target" min="0" required="" step="50" type="number"/></div>
+<div class="field"><label>Data di raggiungimento</label><input id="goal-create-date" type="date"/></div>
+<div class="field"><label>Priorità</label><select id="goal-create-priority"><option value="3">Alta</option><option selected="" value="2">Media</option><option value="1">Bassa</option></select></div>
+<button class="primary" type="submit">Crea obiettivo</button>
+</form>
+</div>
+<div class="sheet" id="installment-debt-sheet">
+<div class="handle"></div><h3 id="installment-debt-sheet-title">Nuovo debito</h3>
+<form class="form" onsubmit="saveInstallmentDebt(event)">
+<input id="installment-debt-id" type="hidden"/>
+<div class="field"><label>Spesa / debito</label><input aria-label="Es. Auto, mobili, finanziamento" id="installment-debt-name" placeholder="Es. Auto, mobili, finanziamento" required=""/></div>
+<div class="field"><label>Importo totale</label><input class="amount-input" id="installment-debt-total" min="0" required="" step="0.01" type="number"/></div>
+<div class="field"><label>Importo già pagato</label><input class="amount-input" id="installment-debt-paid" min="0" step="0.01" type="number" value="0"/></div>
+<div class="field"><label>Numero totale rate</label><input id="installment-debt-installments" min="1" required="" step="1" type="number"/></div>
+<div class="field"><label>Importo rata</label><input class="amount-input" id="installment-debt-installment-amount" min="0" step="0.01" type="number"/></div>
+<div class="field"><label>Prima scadenza</label><input id="installment-debt-first-date" required="" type="date"/></div>
+<div class="field"><label>Frequenza</label><select id="installment-debt-frequency"><option value="monthly">Mensile</option><option value="bimonthly">Ogni 2 mesi</option><option value="quarterly">Trimestrale</option></select></div>
+<div class="field"><label>Note</label><textarea aria-label="Facoltative" id="installment-debt-notes" placeholder="Facoltative" rows="2"></textarea></div>
+<button class="primary" type="submit">Salva piano</button>
+<div class="deadline-edit-actions is-hidden" id="installment-debt-edit-actions">
+<button class="danger-soft" onclick="deleteInstallmentDebt()" type="button"><i data-lucide="trash-2"></i>Elimina</button>
+</div>
+</form>
+</div>
+<div class="sheet" id="installment-payment-sheet">
+<div class="handle"></div><h3>Registra pagamento</h3>
+<form class="form" onsubmit="saveInstallmentPayment(event)">
+<input id="installment-payment-debt-id" type="hidden"/>
+<div class="field"><label>Importo pagato</label><input class="amount-input" id="installment-payment-amount" min="0" required="" step="0.01" type="number"/></div>
+<div class="field"><label>Data pagamento</label><input id="installment-payment-date" required="" type="date"/></div>
+<button class="primary" type="submit">Registra pagamento</button>
+</form>
+</div>
+<div class="sheet" id="confirm-sheet">
+<div class="confirm-card"><h3 id="confirm-title">Conferma</h3><p id="confirm-copy">Vuoi continuare?</p>
+<div class="confirm-actions"><button onclick="resolveConfirm(false)">Annulla</button><button class="danger" onclick="resolveConfirm(true)">Elimina</button></div>
+</div>
+</div>
+<input accept="application/json" class="is-hidden" id="json-import-input" onchange="importJSONFile(event)" type="file"/>
+<div class="toast" id="toast"></div>
+<div class="sheet deadline-sheet-v88" id="deadline-sheet">
+<div class="grab"></div>
+<div class="sheet-head deadline-sheet-head">
+<div class="deadline-sheet-heading">
+<div class="deadline-sheet-icon"><i data-lucide="calendar-clock"></i></div>
+<div><div class="eyebrow">Promemoria condiviso</div><h2 id="deadline-sheet-title">Nuova scadenza</h2><p>Registra solo pagamenti realmente previsti.</p></div>
+</div>
+<button aria-label="Chiudi" class="round" onclick="closeSheets()"><i data-lucide="x"></i></button>
+</div>
+<form class="deadline-form-v88" onsubmit="saveDeadline(event)">
+<input id="deadline-id" type="hidden"/>
+<div class="deadline-form-section">
+<label class="deadline-field primary-field"><span>Pagamento</span><input aria-label="Es. Bolletta luce" autocomplete="off" id="deadline-title" placeholder="Es. Bolletta luce" required=""/></label>
+<div class="deadline-form-pair">
+<label class="deadline-field"><span>Importo</span><div class="deadline-money-input"><b>€</b><input id="deadline-amount" inputmode="decimal" min="0" placeholder="0,00" step="0.01" type="number"/></div></label>
+<label class="deadline-field"><span>Scadenza</span><input id="deadline-date" required="" type="date"/></label>
+</div>
+<label class="deadline-field"><span>Note <em>facoltative</em></span><textarea aria-label="Aggiungi un dettaglio utile" id="deadline-notes" placeholder="Aggiungi un dettaglio utile" rows="2"></textarea></label>
+</div>
+<label class="deadline-complete deadline-switch">
+<span><b>Pagamento già effettuato</b><small>La scadenza non comparirà tra quelle aperte.</small></span>
+<input id="deadline-completed" type="checkbox"/>
+</label>
+<button class="primary deadline-save-primary" type="submit"><i data-lucide="check"></i>Salva scadenza</button>
+<div class="deadline-edit-actions is-hidden" id="deadline-edit-actions">
+<button onclick="exportCurrentDeadlineICS()" type="button"><i data-lucide="share"></i><span>Esporta</span></button>
+<button class="danger-soft" onclick="deleteCurrentDeadline()" type="button"><i data-lucide="trash-2"></i>Elimina</button>
+</div>
+<div class="deadline-sheet-footnote"><i data-lucide="info"></i><span>L’esportazione crea un file .ics da aprire nel Calendario di iPhone.</span></div>
+</form>
+</div>
+<div class="sheet" id="budget-sheet">
+<div class="handle"></div><h3>Budget mensile</h3>
+<form class="form" onsubmit="saveBudget(event)">
+<div class="field"><label>Tetto di spesa</label><input class="amount-input" id="budget-input" min="0" placeholder="€ 0" step="50" type="number"/></div>
+<button class="primary">Salva budget</button>
+</form>
+</div>
+
+<div class="fullpanel" id="panel-investment-detail">
+<div class="fullpanel-inner">
+<div class="panelbar"><button aria-label="Indietro" class="round" onclick="closeInvestmentDetail()"><i data-lucide="chevron-left"></i></button><h2 id="investment-detail-title">Investimento</h2><button aria-label="Aggiungi" class="round" onclick="openInvestmentAdd()"><i data-lucide="plus"></i></button></div>
+<div id="investment-detail-content"></div>
+</div>
+</div>
+<div class="fullpanel" id="panel-goal-detail">
+<div class="fullpanel-inner">
+<div class="panelbar"><button aria-label="Indietro" class="round" onclick="closeGoalDetail()"><i data-lucide="chevron-left"></i></button><h2 id="goal-detail-title">Obiettivo</h2><button aria-label="Aggiungi" class="round" onclick="goalQuickDeposit()"><i data-lucide="plus"></i></button></div>
+<div id="goal-detail-content"></div>
+</div>
+</div>
+<div class="fullpanel" id="panel-month-detail">
+<div class="fullpanel-inner">
+<div class="panelbar"><button aria-label="Indietro" class="round" onclick="closeMonthDetail()"><i data-lucide="chevron-left"></i></button><h2 id="month-detail-title">Mese</h2><button aria-label="Aggiungi" class="round" onclick="openAdd('utenza')"><i data-lucide="plus"></i></button></div>
+<div id="month-detail-content"></div>
+</div>
+</div>
+<div class="fullpanel" id="panel-debts">
+<div class="fullpanel-inner">
+<div class="panelbar"><button aria-label="Indietro" class="round" onclick="closeDebtPanel()"><i data-lucide="chevron-left"></i></button><h2>Debiti da saldare</h2><span class="panelbar-spacer"></span></div>
+<div id="debt-panel-content"></div>
+</div>
+</div>
+<div class="fullpanel" id="panel-monthly-report">
+<div class="fullpanel-inner monthly-report-shell">
+<div class="panelbar monthly-report-panelbar">
+<button aria-label="Indietro" class="round" onclick="closeMonthlyReport()"><i data-lucide="chevron-left"></i></button>
+<h2>Report mensile</h2>
+<button aria-label="Stampa report" class="round" onclick="printMonthlyReport()"><i data-lucide="printer"></i></button>
+</div>
+<div class="monthly-report-toolbar">
+<select id="monthly-report-select" onchange="selectMonthlyReport(this.value)"></select>
+<button onclick="exportMonthlyReportCSV()" type="button"><i data-lucide="download"></i>CSV</button>
+</div>
+<div id="monthly-report-content"></div>
+</div>
+</div>
+<div class="fullpanel" id="panel-data">
+<div class="fullpanel-inner"><div class="panelbar"><button aria-label="Indietro" class="round" onclick="closePanels()"><i data-lucide="chevron-left"></i></button><h2>Dati</h2><span class="panelbar-spacer"></span></div>
+<div class="card"><div class="insight"><div class="insight-icon"><i data-lucide="shield-check"></i></div><div><p>I dati restano nel database Supabase associato all'app.</p><small id="storage-mode-copy">Modalità compatibilità.</small></div></div></div>
+<div class="section-title"><h2>Stato dei dati</h2><button onclick="renderDataHealth()">Ricontrolla</button></div>
+<div class="card canonical-data-status" id="canonical-data-status"></div>
+<div class="section-title data-health-detail-title"><h2>Controlli</h2><span>solo elementi da verificare</span></div>
+<div class="data-health-summary">
+<div><span>Elementi da verificare</span><b class="data-health-count" id="data-health-count">0</b></div>
+<div class="data-health-summary-copy"><small id="data-health-sub">Analizzo coerenza e duplicati…</small><small id="data-health-reviewed-count"></small></div>
+</div>
+<div class="data-health-toolbar">
+<div class="data-health-filter">
+<button class="active" data-health-filter="all" onclick="setDataHealthFilter('all',this)" type="button">Tutti</button>
+<button data-health-filter="error" onclick="setDataHealthFilter('error',this)" type="button">Errori</button>
+<button data-health-filter="warn" onclick="setDataHealthFilter('warn',this)" type="button">Avvisi</button>
+</div>
+<button class="data-health-reset" hidden="" id="data-health-reset" onclick="resetDataHealthReviewed()" type="button">Ripristina verificati</button>
+</div>
+<div class="card data-health-list" id="data-health-list"></div>
+<div class="canonical-migration-wrap"><div class="section-title"><h2>Archivio storico</h2></div>
+<div class="card canonical-migration" id="canonical-migration"></div></div>
+<div class="section-title"><h2>Definizioni contabili</h2></div>
+<div class="card accounting-rules">
+<div><b>Entrate</b><span>Stipendio del giorno 1–26: stesso mese. Dal 27: competenza del mese successivo.</span></div>
+<div><b>Spese</b><span>Quota personale effettiva, comprese le spese condivise.</span></div>
+<div><b>Saldo mensile</b><span>Entrate − spese. Non viene chiamato “risparmio”.</span></div>
+<div><b>Risparmio reale</b><span>ETF/PAC + versamenti agli obiettivi + incrementi dei conti deposito.</span></div>
+<div><b>Patrimonio comune</b><span>Dipende dal modello scelto sotto. Le spese del mese restano sempre un flusso separato.</span></div>
+</div>
+<div class="section-title"><h2>Modello patrimonio comune</h2></div>
+<div class="card common-wealth-setting">
+<label for="common-wealth-mode">Come sono rappresentati gli obiettivi?</label>
+<select id="common-wealth-mode" onchange="setCommonWealthMode(this.value)">
+<option value="separate">Risorse separate dai conti comuni</option>
+<option value="envelopes">Buste virtuali già incluse nei conti comuni</option>
+</select>
+<small id="common-wealth-mode-note">Caricamento impostazione…</small>
+</div>
+<div class="section-title"><h2>Revolut</h2><span class="v74-tag">saldo tra partner</span></div>
+<div class="card revolut-settings-card" id="revolut-settings-card">
+<div class="revolut-setting-copy">
+<div class="revolut-logo-mark">R</div>
+<div><b>Link personali Revolut.me</b><small>Servono per aprire rapidamente il pagamento verso il partner corretto.</small></div>
+</div>
+<div class="revolut-settings-grid">
+<label>Marina<input autocomplete="off" id="revolut-marina" inputmode="url" placeholder="https://revolut.me/..." type="url"/></label>
+<label>Vincenzo<input autocomplete="off" id="revolut-vincenzo" inputmode="url" placeholder="https://revolut.me/..." type="url"/></label>
+</div>
+<button class="primary revolut-save-btn" onclick="saveRevolutSettings()" type="button">Salva link Revolut</button>
+<small class="revolut-note">BIL apre il link del destinatario ma non può verificare che il pagamento sia stato completato. “Segna come saldato” resta manuale.</small>
+</div>
+<div class="section-title"><h2>Backup</h2></div>
+<div class="backup-actions"><button onclick="exportJSON()"><i data-lucide="download"></i> Backup JSON</button><button onclick="document.getElementById('json-import-input').click()"><i data-lucide="upload"></i> Importa JSON</button></div>
+<button class="primary full-action spaced-action" onclick="exportCSV()">Esporta CSV</button>
+<div class="section-title"><h2>Attività recente</h2></div>
+<div class="card" id="audit-list"></div>
+</div>
+</div>
+<div class="section-title"><h2>Esportazione</h2></div><button class="primary full-action" onclick="exportCSV()">Esporta CSV completo</button>
+
+
+<div class="fullpanel" id="panel-wealth-detail">
+  <div class="panel-head"><button onclick="closeV105Panel('wealth-detail')"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">Quadro patrimoniale</div><h2>Patrimonio</h2></div></div>
+  <div class="panel-body v129-wealth-page">
+    <section class="v129-wealth-hero"><span>Patrimonio disponibile</span><strong id="v129-total">€ 0</strong><small id="v129-caption">Personale + patrimonio comune</small></section>
+    <section class="v129-section"><div class="v129-section-title"><div><span>IL TUO PATRIMONIO</span><h3 id="v129-person-title">Personale</h3></div><b id="v129-person-net">€ 0</b></div><div id="v129-person-list" class="v129-breakdown"></div></section>
+    <section class="v129-section"><div class="v129-section-title"><div><span>INSIEME</span><h3>Patrimonio comune</h3></div><b id="v129-shared-net">€ 0</b></div><div id="v129-shared-list" class="v129-breakdown"></div><p class="v129-model-note" id="v129-model-note"></p></section>
+    <section class="v129-audit"><div class="v129-audit-icon"><i data-lucide="check-check"></i></div><div><b>Coerenza patrimoniale</b><p>Trasferimenti verso obiettivi, conti deposito e investimenti cambiano la composizione del patrimonio, non sono spese. Entrate e spese restano flussi separati.</p></div></section>
+    <button class="v129-analysis-link" onclick="closeV105Panel('wealth-detail');go('analytics')"><span><b>Analisi finanziaria</b><small>Andamento, storico e approfondimenti</small></span><i data-lucide="chevron-right"></i></button>
+  </div>
+</div>
+<div class="fullpanel v168-settings-panel" id="panel-settings"><div class="panel-head"><button aria-label="Chiudi impostazioni" onclick="closePanels()"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">BIL</div><h2>Impostazioni</h2></div></div><div class="panel-body v168-settings-pane">
+<div class="v168-settings-intro"><div><p>Privacy, pianificazione e gestione dell'app in un solo posto.</p></div></div>
+<section class="v168-settings-group"><h3>Privacy</h3><div class="v168-settings-card">
+<button type="button" onclick="toggleWealthPrivacy(event);v168SyncSettings()"><span class="v168-setting-icon"><i data-lucide="eye-off"></i></span><span><b>Nascondi importi</b><small>Oscura gli importi sensibili in BIL</small></span><span class="v168-switch" id="v168-privacy-switch" aria-hidden="true"><i></i></span></button>
+<div class="v168-setting-row"><span class="v168-setting-icon"><i data-lucide="moon-star"></i></span><span><b>Aspetto</b><small>Segue automaticamente l'aspetto di iPhone</small></span><em>Automatico</em></div>
+</div></section>
+<section class="v168-settings-group"><h3>Pianificazione</h3><div class="v168-settings-card">
+<button type="button" onclick="openRecurringManager()"><span class="v168-setting-icon"><i data-lucide="repeat-2"></i></span><span><b>Spese ricorrenti</b><small>Importi, frequenze e prossime scadenze</small></span><i data-lucide="chevron-right"></i></button>
+<button type="button" onclick="openAgendaPanel()"><span class="v168-setting-icon"><i data-lucide="calendar-days"></i></span><span><b>Agenda</b><small>Scadenze e calendario</small></span><i data-lucide="chevron-right"></i></button>
+</div></section>
+<section class="v168-settings-group"><h3>Dati e collegamenti</h3><div class="v168-settings-card">
+<button type="button" onclick="openPanel('data')"><span class="v168-setting-icon"><i data-lucide="database"></i></span><span><b>Dati e backup</b><small>Controllo dati, CSV, JSON e patrimonio comune</small></span><i data-lucide="chevron-right"></i></button>
+<button type="button" onclick="connectRevolut()"><span class="v168-setting-icon"><i data-lucide="landmark"></i></span><span><b>Open Banking</b><small id="v168-bank-setting-status">Gestisci il collegamento Revolut</small></span><i data-lucide="chevron-right"></i></button>
+</div></section>
+<section class="v168-settings-group"><h3>Informazioni</h3><div class="v168-settings-card">
+<a href="privacy.html" target="_blank" rel="noopener"><span class="v168-setting-icon"><i data-lucide="shield-check"></i></span><span><b>Privacy</b><small>Informativa sul trattamento dei dati</small></span><i data-lucide="arrow-up-right"></i></a>
+<a href="terms.html" target="_blank" rel="noopener"><span class="v168-setting-icon"><i data-lucide="file-text"></i></span><span><b>Termini</b><small>Condizioni d'uso</small></span><i data-lucide="arrow-up-right"></i></a>
+<div class="v168-setting-row"><span class="v168-setting-icon"><i data-lucide="info"></i></span><span><b>Versione</b><small>BIL</small></span><em>21.8.6</em></div>
+</div></section>
+
+</div></div>
+
+<div class="fullpanel" id="panel-recurring-manager"><div class="panel-head"><button onclick="closeV105Panel('recurring-manager')"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">Pianificazione</div><h2>Spese ricorrenti</h2></div><button class="text-btn" onclick="editManualRecurring()">Aggiungi</button></div><div class="panel-body"><p class="v105-intro">Crea e modifica le spese ricorrenti che vuoi pianificare. BIL non ne aggiunge automaticamente.</p><div id="v105-recurring-list"></div></div></div>
+<div class="fullpanel v1613-agenda-panel" id="panel-agenda"><div class="panel-head"><button aria-label="Chiudi agenda" onclick="closePanels()"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">NOI · AGENDA</div><h2>Agenda</h2></div><button class="text-btn" onclick="openDeadlineSheet()">Aggiungi</button></div><div class="panel-body"><div class="v1613-agenda-summary"><div><span>Impegni del mese</span><b id="v1613-agenda-count">0</b></div><div><span>Totale del mese</span><b id="v1613-agenda-total">€ 0</b></div></div><div class="v1613-agenda-cal"><div class="v1613-agenda-calhead"><button onclick="changeAgendaMonth(-1)" aria-label="Mese precedente"><i data-lucide="chevron-left"></i></button><strong id="v1613-agenda-month"></strong><button onclick="changeAgendaMonth(1)" aria-label="Mese successivo"><i data-lucide="chevron-right"></i></button></div><div class="v1613-agenda-week"><span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span></div><div class="v1613-agenda-grid" id="v1613-agenda-grid"></div></div><div class="v1613-agenda-title"><h3>Scadenze del mese</h3><small id="v1613-agenda-sub"></small></div><div class="v1613-agenda-list" id="v1613-agenda-list"></div><div class="v1613-agenda-actions"><button class="secondary" onclick="exportAllDeadlinesICS()"><i data-lucide="square-arrow-out-up-right"></i> Esporta</button><button class="primary" onclick="openDeadlineSheet()"><i data-lucide="plus"></i> Nuovo impegno</button></div></div></div><div class="fullpanel" id="panel-recurring-edit"><div class="panel-head"><button onclick="closeV105Panel('recurring-edit')"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">Ricorrente</div><h2 id="v105-rec-edit-title">Nuova spesa</h2></div></div><div class="panel-body"><form class="form" onsubmit="saveManualRecurring(event)"><input id="v105-rec-id" type="hidden"><div class="field"><label>Nome</label><input id="v105-rec-name" required placeholder="es. Netflix, Assicurazione auto"></div><div class="field"><label>Importo previsto</label><input id="v105-rec-amount" type="number" min="0" step="0.01" inputmode="decimal"></div><div class="field"><label>Tipo importo</label><select id="v105-rec-variable"><option value="fixed">Fisso</option><option value="variable">Variabile</option></select></div><div class="field"><label>Categoria</label><select id="v105-rec-cat"><option>Casa</option><option>Affitto</option><option>Utenze</option><option>Spesa alimentare</option><option>Ristorante</option><option>Auto</option><option>Trasporti</option><option>Salute</option><option>Abbonamenti</option><option>Shopping</option><option>Tempo libero</option><option>Assicurazioni</option><option>Rate</option><option>Altro</option></select></div><div class="field"><label>Ambito</label><select id="v105-rec-scope"><option value="personal">Personale</option><option value="shared">Condivisa 50/50</option></select></div><div class="field"><label>Frequenza</label><select id="v105-rec-frequency"><option value="monthly">Mensile</option><option value="bimonthly">Bimestrale</option><option value="quarterly">Trimestrale</option><option value="semiannual">Semestrale</option><option value="annual">Annuale</option></select></div><div class="field"><label>Prossima data prevista</label><input id="v105-rec-next" type="date" required></div><div class="field"><label>Modalità</label><select id="v105-rec-mode"><option value="debit">Addebito automatico</option><option value="deadline">Scadenza da pagare</option></select></div><label class="v105-check"><input id="v105-rec-paused" type="checkbox"><span>Metti in pausa</span></label><button class="primary" type="submit">Salva ricorrente</button><button class="secondary danger-btn" id="v105-rec-delete" type="button" onclick="deleteManualRecurring()">Elimina</button></form></div></div>
+<div class="fullpanel" id="panel-garage"><div class="panel-head"><button onclick="closeV105Panel('garage')"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">BIL Garage</div><h2>Auto</h2></div><button class="text-btn" onclick="editVehicle()">Aggiungi</button></div><div class="panel-body"><div id="v105-garage-list"></div></div></div>
+<div class="fullpanel" id="panel-vehicle-edit"><div class="panel-head"><button onclick="closeV105Panel('vehicle-edit')"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">Garage</div><h2 id="v105-vehicle-title">Nuova auto</h2></div></div><div class="panel-body"><form class="form" onsubmit="saveVehicle(event)"><input id="v105-vehicle-id" type="hidden"><div class="field"><label>Nome auto</label><input id="v105-vehicle-name" required placeholder="es. 500X"></div><div class="field"><label>Targa (facoltativa)</label><input id="v105-vehicle-plate" maxlength="12" autocapitalize="characters"></div><div class="field"><label>Anno</label><input id="v105-vehicle-year" type="number" min="1950" max="2100"></div><div class="field"><label>Alimentazione</label><select id="v105-vehicle-fuel"><option>Benzina</option><option>Diesel</option><option>Ibrida</option><option>Plug-in hybrid</option><option>Elettrica</option><option>GPL</option><option>Metano</option><option>Altro</option></select></div><div class="field"><label>Km attuali</label><input id="v105-vehicle-km" type="number" min="0" step="1"></div><button class="primary" type="submit">Salva auto</button><button class="secondary danger-btn" id="v105-vehicle-delete" type="button" onclick="deleteVehicle()">Elimina auto</button></form></div></div>
+<div class="fullpanel" id="panel-vehicle-detail"><div class="panel-head"><button onclick="closeV105Panel('vehicle-detail')"><i data-lucide="chevron-left"></i></button><div><div class="eyebrow">Garage</div><h2 id="v105-vehicle-detail-title">Auto</h2></div><button class="text-btn" onclick="editCurrentVehicle()">Modifica</button></div><div class="panel-body"><div id="v105-vehicle-detail-body"></div></div></div>
+<div class="fullpanel" id="panel-car-entry"><div class="panel-head bil108-entry-head"><button class="text-btn" type="button" onclick="closeV105Panel('car-entry')">Annulla</button><div><h2 id="v105-car-entry-title">Nuova spesa</h2></div><button class="text-btn bil108-save-top" type="button" onclick="document.getElementById('v108-car-entry-form').requestSubmit()">Salva</button></div><div class="panel-body"><form class="form bil108-expense-form" id="v108-car-entry-form" onsubmit="saveCarEntry(event)"><input id="v105-car-entry-vehicle" type="hidden"><input id="v105-car-entry-kind" type="hidden"><input id="v108-car-entry-id" type="hidden"><div class="bil108-amount-date"><div class="field"><label>Importo</label><input id="v105-car-entry-amount" type="number" min="0" step="0.01" inputmode="decimal"></div><div class="field"><label>Data</label><input id="v105-car-entry-date" type="date" required></div></div><div class="field"><label>Descrizione</label><input id="v105-car-entry-name" required></div><div class="field"><label>Categoria</label><select id="v108-car-entry-category"><option>Benzina</option><option>Manutenzione</option><option>Assicurazione</option><option>Bollo</option><option>Pedaggi</option><option>Parcheggio</option><option>Lavaggio</option><option>Altro</option></select></div><div class="bil108-auto-chip"><img src="assets/opel-mokka-2023.png" alt=""><div><small>Auto</small><b id="v108-entry-vehicle-name">Auto</b></div></div><div class="field"><label>Chilometri (facoltativo)</label><input id="v105-car-entry-km" type="number" min="0" step="1"></div><div class="field" id="v105-car-liters-field"><label>Litri (facoltativo)</label><input id="v105-car-entry-liters" type="number" min="0" step="0.01" inputmode="decimal"></div><div class="field"><label>Note</label><textarea id="v108-car-entry-notes" rows="2"></textarea></div><button id="v108-delete-entry" class="bil108-delete" type="button" onclick="deleteCarEntry()" style="display:none"><i data-lucide="trash-2"></i> Elimina spesa</button></form></div></div>
+<div class="auth open" id="auth">
+<form class="authbox" onsubmit="login(event)">
+<div class="authlogo"><i data-lucide="wallet-cards"></i></div>
+<h1>Bilancio</h1><p>Il vostro spazio finanziario condiviso.</p>
+<div class="form">
+<div class="field"><label>Email</label><input autocomplete="username" id="email" required="" type="email"/></div>
+<div class="field"><label>Password</label><input autocomplete="current-password" id="password" required="" type="password"/></div>
+<button class="primary" id="login-btn">Accedi</button>
+</div>
+<div class="authmsg" id="authmsg"></div>
+<div class="login-build" id="login-build">BIL 18.1 · Category dropdown</div>
+<div class="login-legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a><span>·</span><a href="terms.html" target="_blank" rel="noopener">Termini</a></div>
+</form>
+</div>
+<script src="js/app.js?v=21.8.6"></script>
+</body>
+</html>
